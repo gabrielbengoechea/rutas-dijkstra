@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra Logistics Master - Optimización en Transporte de Salida</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        logistics: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        brandNavy: '#0f172a',
+                        brandAccent: '#06b6d4'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-active { border-bottom: 3px solid #06b6d4; color: #06b6d4; font-weight: 700; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        canvas { touch-action: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-50 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-cyan-500 p-2 rounded-xl text-slate-950 font-black text-xl flex items-center justify-center w-10 h-10 shadow-lg shadow-cyan-500/20">
+                        <i class="fa-solid fa-route"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-lg sm:text-xl tracking-tight leading-none text-white">
+                            Logistics<span class="text-cyan-400">Dijkstra</span>
+                        </h1>
+                        <p class="text-xs text-slate-400 hidden sm:block">Transporte de Salida • Optimización y Fluidez de Envíos</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs bg-slate-800 text-cyan-400 border border-slate-700 px-3 py-1.5 rounded-full font-semibold hidden md:inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-truck-ramp-box"></i> Red de Distribución
+                    </span>
+                    <button onclick="loadScenario('urban')" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 px-3 py-1.5 rounded-lg font-bold text-xs transition">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> Reiniciar Escenario
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex space-x-4 sm:space-x-8 overflow-x-auto custom-scrollbar text-sm font-medium border-t border-slate-800/80 pt-1">
+                <button onclick="switchTab('simulator')" id="tab-simulator" class="tab-button py-3 px-2 whitespace-nowrap tab-active flex items-center space-x-2 transition">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>Simulador Visual Dijkstra</span>
+                </button>
+                <button onclick="switchTab('impact')" id="tab-impact" class="tab-button py-3 px-2 whitespace-nowrap text-slate-400 hover:text-white flex items-center space-x-2 transition">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                    <span>Impacto Financiero y Logístico</span>
+                </button>
+                <button onclick="switchTab('scenarios')" id="tab-scenarios" class="tab-button py-3 px-2 whitespace-nowrap text-slate-400 hover:text-white flex items-center space-x-2 transition">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <span>Casos Prácticos & Escenarios</span>
+                </button>
+                <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-button py-3 px-2 whitespace-nowrap text-slate-400 hover:text-white flex items-center space-x-2 transition">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>Evaluación & Quiz</span>
+                </button>
+                <button onclick="switchTab('theory')" id="tab-theory" class="tab-button py-3 px-2 whitespace-nowrap text-slate-400 hover:text-white flex items-center space-x-2 transition">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>Fundamentos Teóricos</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ==================== TAB 1: SIMULADOR VISUAL DIJKSTRA ==================== -->
+        <section id="sec-simulator" class="space-y-6">
+            <!-- Top Controls Bar -->
+            <div class="bg-slate-800/80 border border-slate-700/80 p-4 rounded-2xl shadow-lg flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-slate-700 rounded-xl text-cyan-400">
+                        <i class="fa-solid fa-sliders text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-white">Panel de Control de Optimización</h2>
+                        <p class="text-xs text-slate-400">Selecciona origen (Centro Distribución) y destino (Cliente/Sucursal) para ejecutar el algoritmo.</p>
+                    </div>
+                </div>
+
+                <!-- Interactive Controls -->
+                <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                    <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-xl">
+                        <label class="text-xs text-slate-400 font-semibold">Origen:</label>
+                        <select id="select-start-node" onchange="updateStartNode()" class="bg-slate-800 text-white text-xs font-bold rounded-lg px-2 py-1 outline-none border border-slate-600 focus:border-cyan-400">
+                            <!-- Injected dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-xl">
+                        <label class="text-xs text-slate-400 font-semibold">Destino:</label>
+                        <select id="select-target-node" onchange="updateTargetNode()" class="bg-slate-800 text-white text-xs font-bold rounded-lg px-2 py-1 outline-none border border-slate-600 focus:border-cyan-400">
+                            <!-- Injected dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-1.5">
+                        <button onclick="prevAlgorithmStep()" id="btn-prev-step" disabled class="px-3 py-2 bg-slate-700 text-slate-300 rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-slate-600 transition">
+                            <i class="fa-solid fa-backward-step"></i>
+                        </button>
+                        <button onclick="nextAlgorithmStep()" id="btn-next-step" class="px-3.5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-extrabold transition shadow-md shadow-cyan-500/20 flex items-center gap-1.5">
+                            <span>Siguiente Paso</span>
+                            <i class="fa-solid fa-play text-xs"></i>
+                        </button>
+                        <button onclick="runDijkstraInstantly()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>Ruta Óptima Directa</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Canvas Layout & Graph Visualizer -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Interactive Canvas (2 Columns) -->
+                <div class="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-3 px-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-emerald-500 rounded-full animate-ping"></span>
+                            <span class="text-xs font-bold text-slate-300">Mapa Interactivo de Nodos Logísticos</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 flex items-center gap-3">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> Origen</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Visitado</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Evaluando</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> Ruta Óptima</span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Container -->
+                    <div class="relative w-full h-[480px] bg-slate-900/90 rounded-xl border border-slate-800 overflow-hidden cursor-crosshair">
+                        <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+
+                        <!-- Canvas overlay instructions -->
+                        <div class="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur border border-slate-800 text-[11px] text-slate-400 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                            <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+                            <span>Puedes arrastrar los nodos para reorganizar la red de distribución.</span>
+                        </div>
+                    </div>
+
+                    <!-- Step Explanation Banner -->
+                    <div id="step-explanation-box" class="mt-4 p-3.5 bg-slate-800/90 border border-cyan-500/30 rounded-xl text-xs text-slate-200 flex items-start gap-3">
+                        <div class="p-2 bg-cyan-500/10 text-cyan-400 rounded-lg shrink-0 mt-0.5">
+                            <i class="fa-solid fa-circle-info text-base"></i>
+                        </div>
+                        <div>
+                            <strong class="font-bold text-cyan-300 block mb-0.5" id="step-title">Inicio del Algoritmo</strong>
+                            <p id="step-desc" class="text-slate-300">Presiona "Siguiente Paso" para ver la expansión paso a paso del Algoritmo de Dijkstra sobre la red logística.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Live Execution Metrics Table & Priority Queue -->
+                <div class="bg-slate-800/60 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-5">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-extrabold text-white text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-table-list text-cyan-400"></i> Tabla de Distancias ($d[v]$)
+                            </h3>
+                            <span id="badge-step-counter" class="text-[10px] font-bold bg-slate-700 text-cyan-300 px-2 py-0.5 rounded-full">Paso 0</span>
+                        </div>
+
+                        <!-- Distance Table -->
+                        <div class="overflow-x-auto custom-scrollbar max-h-[260px]">
+                            <table class="w-full text-xs text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900/90 text-slate-400 text-[11px]">
+                                        <th class="p-2 font-semibold">Nodo / Punto</th>
+                                        <th class="p-2 font-semibold text-center">Dist. Acumulada ($d$)</th>
+                                        <th class="p-2 font-semibold text-center">Predecesor ($p$)</th>
+                                        <th class="p-2 font-semibold text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-dijkstra-body" class="divide-y divide-slate-800 text-slate-300">
+                                    <!-- Injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Live Priority Queue / Unvisited list -->
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl">
+                        <h4 class="font-bold text-xs text-slate-300 mb-2 flex items-center justify-between">
+                            <span><i class="fa-solid fa-layer-group text-amber-400 mr-1.5"></i> Cola de Prioridad (Por Examinar)</span>
+                        </h4>
+                        <div id="priority-queue-container" class="flex flex-wrap gap-1.5 min-h-[36px] items-center">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Summary Stats Card -->
+                    <div id="route-summary-card" class="bg-gradient-to-r from-cyan-950/40 to-slate-900 border border-cyan-500/30 p-4 rounded-xl space-y-2">
+                        <span class="text-[10px] uppercase tracking-wider font-extrabold text-cyan-400 block">Resultado de la Ruta Óptima</span>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-xs text-slate-400">Distancia Total:</span>
+                            <span id="stat-total-distance" class="text-lg font-black text-white">0 km</span>
+                        </div>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-xs text-slate-400">Costo Est. Combustible:</span>
+                            <span id="stat-fuel-cost" class="text-sm font-bold text-emerald-400">$0 USD</span>
+                        </div>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-xs text-slate-400">Tiempo estimado:</span>
+                            <span id="stat-travel-time" class="text-sm font-semibold text-slate-200">0 min</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: IMPACTO FINANCIERO Y LOGÍSTICO ==================== -->
+        <section id="sec-impact" class="space-y-6 hidden">
+            <!-- Header Banner -->
+            <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 p-6 rounded-2xl shadow-xl">
+                <div class="max-w-3xl">
+                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold uppercase px-3 py-1 rounded-full">Optimización en Transporte de Salida</span>
+                    <h2 class="text-2xl font-black text-white mt-2">Calculadora de Ahorro y Fluidez Logística</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-1">
+                        La finalidad de aplicar algoritmos de optimización de rutas como Dijkstra en transporte de salida no es solo hallar el camino más corto, sino **reducir costos operativos, consolidar cargas y garantizar entregas a tiempo**.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Interactive Parameters & Savings Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Inputs Column -->
+                <div class="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl space-y-4">
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i> Parámetros de la Flota
+                    </h3>
+
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="text-slate-400 font-semibold block mb-1">Costo por Kilómetro (USD/km):</label>
+                            <input type="number" id="input-cost-per-km" value="1.85" step="0.05" oninput="calculateImpactMetrics()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold outline-none focus:border-cyan-400">
+                        </div>
+
+                        <div>
+                            <label class="text-slate-400 font-semibold block mb-1">Consumo Medio de Combustible (L/100km):</label>
+                            <input type="number" id="input-fuel-rate" value="28" step="1" oninput="calculateImpactMetrics()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold outline-none focus:border-cyan-400">
+                        </div>
+
+                        <div>
+                            <label class="text-slate-400 font-semibold block mb-1">Número de Envíos Mensuales:</label>
+                            <input type="number" id="input-shipment-count" value="450" step="10" oninput="calculateImpactMetrics()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold outline-none focus:border-cyan-400">
+                        </div>
+
+                        <div>
+                            <label class="text-slate-400 font-semibold block mb-1">Factor de Consolidación de Pedidos (%):</label>
+                            <input type="range" id="input-consolidation" min="0" max="40" value="20" oninput="calculateImpactMetrics()" class="w-full accent-cyan-400">
+                            <div class="flex justify-between text-[10px] text-slate-400 font-bold mt-1">
+                                <span>Sin consolidar (0%)</span>
+                                <span id="label-consolidation-val" class="text-cyan-400">20% Consolidado</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Savings Comparison Output Cards (2 Columns) -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Card 1: Monetary Savings -->
+                        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-emerald-500/40 p-5 rounded-2xl relative overflow-hidden">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-xs font-bold text-slate-400 uppercase">Ahorro Financiero Estimado</span>
+                                    <h4 id="calc-financial-savings" class="text-3xl font-black text-emerald-400 my-1">$0 USD</h4>
+                                    <p class="text-[11px] text-slate-400">Ahorro acumulado proyectado por mes.</p>
+                                </div>
+                                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-xl font-black">
+                                    <i class="fa-solid fa-money-bill-trend-up"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Fuel & Carbon Footprint -->
+                        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-cyan-500/40 p-5 rounded-2xl relative overflow-hidden">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-xs font-bold text-slate-400 uppercase">Reducción de Combustible</span>
+                                    <h4 id="calc-fuel-saved" class="text-3xl font-black text-cyan-400 my-1">0 L</h4>
+                                    <p class="text-[11px] text-slate-400"><span id="calc-co2-saved" class="text-slate-200 font-bold">0 kg</span> menos de CO₂ emitidos.</p>
+                                </div>
+                                <div class="w-12 h-12 bg-cyan-500/10 text-cyan-400 rounded-xl flex items-center justify-center text-xl font-black">
+                                    <i class="fa-solid fa-leaf"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Comparison Table -->
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5">
+                        <h4 class="font-bold text-white text-sm mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-scale-balanced text-cyan-400"></i> Comparativa de Rutas: Tradicional (Empírica) vs. Óptima (Dijkstra)
+                        </h4>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead>
+                                    <tr class="bg-slate-900 text-slate-400 border-b border-slate-700">
+                                        <th class="p-3">Métrica de Transporte</th>
+                                        <th class="p-3 text-center text-rose-400">Ruta Tradicional (Empírica)</th>
+                                        <th class="p-3 text-center text-emerald-400">Ruta Óptima (Dijkstra)</th>
+                                        <th class="p-3 text-center font-bold text-cyan-300">Mejora (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-700 text-slate-200">
+                                    <tr>
+                                        <td class="p-3 font-semibold">Distancia Recorrida / Envío</td>
+                                        <td id="comp-dist-trad" class="p-3 text-center">0 km</td>
+                                        <td id="comp-dist-dijk" class="p-3 text-center font-bold text-emerald-400">0 km</td>
+                                        <td id="comp-dist-pct" class="p-3 text-center font-bold text-cyan-400">-0%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-3 font-semibold">Costo Operativo Promedio</td>
+                                        <td id="comp-cost-trad" class="p-3 text-center">$0 USD</td>
+                                        <td id="comp-cost-dijk" class="p-3 text-center font-bold text-emerald-400">$0 USD</td>
+                                        <td id="comp-cost-pct" class="p-3 text-center font-bold text-cyan-400">-0%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-3 font-semibold">Tiempo en Ruta / Lead Time</td>
+                                        <td id="comp-time-trad" class="p-3 text-center">0 hrs</td>
+                                        <td id="comp-time-dijk" class="p-3 text-center font-bold text-emerald-400">0 hrs</td>
+                                        <td id="comp-time-pct" class="p-3 text-center font-bold text-cyan-400">-0%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-3 font-semibold">Carga Consolidada Efectiva</td>
+                                        <td class="p-3 text-center">65% Capacidad</td>
+                                        <td id="comp-consolidated-val" class="p-3 text-center font-bold text-emerald-400">85% Capacidad</td>
+                                        <td class="p-3 text-center font-bold text-cyan-400">+20%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 3: CASOS PRÁCTICOS & ESCENARIOS ==================== -->
+        <section id="sec-scenarios" class="space-y-6 hidden">
+            <div class="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl">
+                <h2 class="text-xl font-extrabold text-white mb-1">Escenarios Logísticos de Estudio</h2>
+                <p class="text-xs text-slate-400">Carga redes preconfiguradas basadas en problemas reales de transporte de salida y cadena de suministro.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Scenario 1 -->
+                <div class="bg-slate-800 border border-slate-700 hover:border-cyan-500/50 rounded-2xl p-5 flex flex-col justify-between transition group">
+                    <div>
+                        <div class="w-10 h-10 bg-cyan-500/10 text-cyan-400 rounded-xl flex items-center justify-center text-lg mb-3 group-hover:bg-cyan-500 group-hover:text-slate-950 transition">
+                            <i class="fa-solid fa-city"></i>
+                        </div>
+                        <h3 class="font-bold text-white text-base mb-1">1. Distribución Urbana de Última Milla</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            Red congestionada en zona metropolitana con múltiples centros de transferencia urbana y puntos de entrega minoristas.
+                        </p>
+                    </div>
+                    <button onclick="loadScenario('urban')" class="w-full py-2.5 bg-slate-700 hover:bg-cyan-500 hover:text-slate-950 font-bold text-xs rounded-xl transition text-cyan-400 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-play"></i> Cargar Escenario Urbano
+                    </button>
+                </div>
+
+                <!-- Scenario 2 -->
+                <div class="bg-slate-800 border border-slate-700 hover:border-cyan-500/50 rounded-2xl p-5 flex flex-col justify-between transition group">
+                    <div>
+                        <div class="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-lg mb-3 group-hover:bg-emerald-500 group-hover:text-slate-950 transition">
+                            <i class="fa-solid fa-snowflake"></i>
+                        </div>
+                        <h3 class="font-bold text-white text-base mb-1">2. Cadena de Frío Regional</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            Red interurbana con restricciones severas de tiempo para evitar la ruptura de la cadena de frío en alimentos perecederos.
+                        </p>
+                    </div>
+                    <button onclick="loadScenario('coldchain')" class="w-full py-2.5 bg-slate-700 hover:bg-emerald-500 hover:text-slate-950 font-bold text-xs rounded-xl transition text-emerald-400 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-play"></i> Cargar Escenario Cadena Frío
+                    </button>
+                </div>
+
+                <!-- Scenario 3 -->
+                <div class="bg-slate-800 border border-slate-700 hover:border-cyan-500/50 rounded-2xl p-5 flex flex-col justify-between transition group">
+                    <div>
+                        <div class="w-10 h-10 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center text-lg mb-3 group-hover:bg-purple-500 group-hover:text-slate-950 transition">
+                            <i class="fa-solid fa-warehouse"></i>
+                        </div>
+                        <h3 class="font-bold text-white text-base mb-1">3. Hubs de Consolidación Intermodal</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            Red de larga distancia que combina transporte terrestre con puertos secos y plataformas logísticas integradas.
+                        </p>
+                    </div>
+                    <button onclick="loadScenario('intermodal')" class="w-full py-2.5 bg-slate-700 hover:bg-purple-500 hover:text-slate-950 font-bold text-xs rounded-xl transition text-purple-300 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-play"></i> Cargar Escenario Intermodal
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: EVALUACIÓN Y QUIZ ==================== -->
+        <section id="sec-quiz" class="space-y-6 hidden">
+            <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-3xl mx-auto">
+                <div class="flex justify-between items-center pb-4 border-b border-slate-700">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-question text-cyan-400"></i> Evaluación: Transporte de Salida & Dijkstra
+                        </h2>
+                        <p class="text-xs text-slate-400">Ponte a prueba resolviendo casos prácticos sobre optimización de rutas.</p>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-400">
+                        Score: <span id="quiz-score-display">0</span> pts
+                    </div>
+                </div>
+
+                <div id="quiz-container" class="py-6">
+                    <!-- Dynamic Quiz Content -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 5: FUNDAMENTOS TEÓRICOS ==================== -->
+        <section id="sec-theory" class="space-y-6 hidden">
+            <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-4xl mx-auto space-y-6 text-slate-300 text-xs sm:text-sm">
+                <div>
+                    <h2 class="text-xl font-extrabold text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-book-bookmark text-cyan-400"></i> El Algoritmo de Dijkstra en el Transporte de Salida
+                    </h2>
+                    <p class="leading-relaxed">
+                        El **transporte de salida (outbound logistics)** comprende el movimiento de productos terminados desde las instalaciones del fabricante o centro de distribución hasta los clientes finales, mayoristas o minoristas. Maximizar la eficiencia en esta etapa es crítico para garantizar un flujo continuo y rentable.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700">
+                        <h3 class="font-bold text-cyan-300 text-sm mb-2"><i class="fa-solid fa-bullseye text-cyan-400 mr-1.5"></i> Objetivos Clave de Optimización</h3>
+                        <ul class="space-y-2 text-xs list-disc list-inside text-slate-300">
+                            <li><strong>Ahorro Financiero:</strong> Reducción de costos de flete por kilómetro y desgaste de flota.</li>
+                            <li><strong>Fluidez Logística:</strong> Minimización de tiempos muertos (*lead time*) e incertidumbres.</li>
+                            <li><strong>Consolidación de Envíos:</strong> Agrupación de pedidos por arcos compartidos en la red.</li>
+                            <li><strong>Sustentabilidad:</strong> Menor huella de carbono por litro de combustible quemado.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700">
+                        <h3 class="font-bold text-emerald-300 text-sm mb-2"><i class="fa-solid fa-code-branch text-emerald-400 mr-1.5"></i> Funcionamiento del Algoritmo</h3>
+                        <ol class="space-y-2 text-xs list-decimal list-inside text-slate-300">
+                            <li>Asigna distancia $d = 0$ al nodo Origen y $d = \infty$ a los demás nodos.</li>
+                            <li>Marca todos los nodos como no visitados y añade el origen a la cola de prioridad.</li>
+                            <li>Selecciona el nodo no visitado con menor distancia tentativa actual.</li>
+                            <li>Evalúa sus vecinos y actualiza $d[v] = d[u] + w(u,v)$ si es menor a la distancia conocida.</li>
+                            <li>Marca el nodo como visitado y repite hasta alcanzar el objetivo.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 text-slate-500 border-t border-slate-800 text-xs py-5 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div>
+                <p class="font-bold text-slate-400">Dijkstra Logistics Master - Suite de Transporte de Salida</p>
+                <p class="text-slate-600">Herramienta didáctica para la enseñanza de Optimización de Rutas y Cadena de Suministro.</p>
+            </div>
+            <p class="text-slate-600 text-right">Desarrollado para la materia de Transporte de Salida</p>
+        </div>
+    </footer>
+
+    <script>
+        // Core Interactive Dijkstra Engine & Canvas Logic
+        let nodes = [];
+        let edges = [];
+        let startNodeId = "CD";
+        let targetNodeId = "CLI_1";
+
+        // Execution State Variables
+        let dijkstraSteps = [];
+        let currentStepIdx = -1;
+        let isAlgorithmFinished = false;
+
+        // Interactive Canvas State
+        let canvas, ctx;
+        let draggedNode = null;
+        let dragOffsetX = 0, dragOffsetY = 0;
+
+        // Default Logistics Scenarios
+        const scenarios = {
+            urban: {
+                start: "CD",
+                target: "CLI_2",
+                nodes: [
+                    { id: "CD", label: "Centro Distribución (CD)", x: 100, y: 220, type: "hub" },
+                    { id: "HUB_N", label: "Hub Norte", x: 280, y: 100, type: "transit" },
+                    { id: "HUB_S", label: "Hub Sur", x: 280, y: 340, type: "transit" },
+                    { id: "ALM_C", label: "Almacén Central", x: 480, y: 220, type: "transit" },
+                    { id: "CLI_1", label: "Cliente Retail 1", x: 680, y: 120, type: "client" },
+                    { id: "CLI_2", label: "Cliente Retail 2", x: 680, y: 320, type: "client" }
+                ],
+                edges: [
+                    { from: "CD", to: "HUB_N", weight: 12 },
+                    { from: "CD", to: "HUB_S", weight: 18 },
+                    { from: "HUB_N", to: "ALM_C", weight: 8 },
+                    { from: "HUB_S", to: "ALM_C", weight: 6 },
+                    { from: "HUB_N", to: "CLI_1", weight: 25 },
+                    { from: "HUB_S", to: "CLI_2", weight: 22 },
+                    { from: "ALM_C", to: "CLI_1", weight: 10 },
+                    { from: "ALM_C", to: "CLI_2", weight: 14 }
+                ]
+            },
+            coldchain: {
+                start: "PLANTA",
+                target: "SUPER_B",
+                nodes: [
+                    { id: "PLANTA", label: "Planta Frigorífica", x: 90, y: 220, type: "hub" },
+                    { id: "CROSS_1", label: "Cross-Dock 1", x: 260, y: 120, type: "transit" },
+                    { id: "CROSS_2", label: "Cross-Dock 2", x: 260, y: 320, type: "transit" },
+                    { id: "HUB_FRIA", label: "Hub Carga Fría", x: 480, y: 220, type: "transit" },
+                    { id: "SUPER_A", label: "Supermercado A", x: 680, y: 110, type: "client" },
+                    { id: "SUPER_B", label: "Supermercado B", x: 680, y: 330, type: "client" }
+                ],
+                edges: [
+                    { from: "PLANTA", to: "CROSS_1", weight: 15 },
+                    { from: "PLANTA", to: "CROSS_2", weight: 25 },
+                    { from: "CROSS_1", to: "HUB_FRIA", weight: 10 },
+                    { from: "CROSS_2", to: "HUB_FRIA", weight: 8 },
+                    { from: "CROSS_1", to: "SUPER_A", weight: 30 },
+                    { from: "HUB_FRIA", to: "SUPER_A", weight: 12 },
+                    { from: "HUB_FRIA", to: "SUPER_B", weight: 14 },
+                    { from: "CROSS_2", to: "SUPER_B", weight: 20 }
+                ]
+            },
+            intermodal: {
+                start: "ORIGEN",
+                target: "PUERTO_DEST",
+                nodes: [
+                    { id: "ORIGEN", label: "Terminal Terrestre", x: 80, y: 220, type: "hub" },
+                    { id: "PUERTO_SECO", label: "Puerto Seco", x: 250, y: 140, type: "transit" },
+                    { id: "ESTACION", label: "Estación Ferroviaria", x: 250, y: 300, type: "transit" },
+                    { id: "HUB_LOG", label: "Plataforma Logística", x: 480, y: 220, type: "transit" },
+                    { id: "PUERTO_DEST", label: "Puerto Destino", x: 680, y: 220, type: "client" }
+                ],
+                edges: [
+                    { from: "ORIGEN", to: "PUERTO_SECO", weight: 40 },
+                    { from: "ORIGEN", to: "ESTACION", weight: 25 },
+                    { from: "PUERTO_SECO", to: "HUB_LOG", weight: 20 },
+                    { from: "ESTACION", to: "HUB_LOG", weight: 35 },
+                    { from: "HUB_LOG", to: "PUERTO_DEST", weight: 15 },
+                    { from: "PUERTO_SECO", to: "PUERTO_DEST", weight: 50 }
+                ]
+            }
+        };
+
+        function loadScenario(scenarioKey) {
+            const sc = scenarios[scenarioKey] || scenarios.urban;
+            nodes = JSON.parse(JSON.stringify(sc.nodes));
+            edges = JSON.parse(JSON.stringify(sc.edges));
+            startNodeId = sc.start;
+            targetNodeId = sc.target;
+
+            populateNodeSelectors();
+            resetDijkstraExecution();
+            drawGraph();
+        }
+
+        function populateNodeSelectors() {
+            const selStart = document.getElementById("select-start-node");
+            const selTarget = document.getElementById("select-target-node");
+
+            selStart.innerHTML = "";
+            selTarget.innerHTML = "";
+
+            nodes.forEach(n => {
+                const opt1 = document.createElement("option");
+                opt1.value = n.id;
+                opt1.innerText = `${n.id} - ${n.label}`;
+                if (n.id === startNodeId) opt1.selected = true;
+                selStart.appendChild(opt1);
+
+                const opt2 = document.createElement("option");
+                opt2.value = n.id;
+                opt2.innerText = `${n.id} - ${n.label}`;
+                if (n.id === targetNodeId) opt2.selected = true;
+                selTarget.appendChild(opt2);
+            });
+        }
+
+        function updateStartNode() {
+            startNodeId = document.getElementById("select-start-node").value;
+            resetDijkstraExecution();
+        }
+
+        function updateTargetNode() {
+            targetNodeId = document.getElementById("select-target-node").value;
+            resetDijkstraExecution();
+        }
+
+        function calculateDijkstraSteps() {
+            dijkstraSteps = [];
+
+            // Distance map and predecessor map initialization
+            let dist = {};
+            let prev = {};
+            let visited = new Set();
+            let unvisited = new Set(nodes.map(n => n.id));
+
+            nodes.forEach(n => {
+                dist[n.id] = Infinity;
+                prev[n.id] = null;
+            });
+
+            dist[startNodeId] = 0;
+
+            // Initial Step
+            dijkstraSteps.push({
+                title: "Inicialización del Algoritmo",
+                desc: `Estableciendo nodo Origen (${startNodeId}) con distancia d = 0. Todos los demás nodos inician con distancia d = ∞.`,
+                dist: { ...dist },
+                prev: { ...prev },
+                visited: new Set(visited),
+                unvisited: new Set(unvisited),
+                current: null,
+                evaluatingEdge: null,
+                optimalPath: []
+            });
+
+            while (unvisited.size > 0) {
+                // Find node with smallest distance in unvisited
+                let current = null;
+                let minDist = Infinity;
+
+                unvisited.forEach(nodeId => {
+                    if (dist[nodeId] < minDist) {
+                        minDist = dist[nodeId];
+                        current = nodeId;
+                    }
+                });
+
+                if (current === null || dist[current] === Infinity) {
+                    break; // Remaining nodes unreachable
+                }
+
+                unvisited.delete(current);
+                visited.add(current);
+
+                dijkstraSteps.push({
+                    title: `Selección de Nodo Evaluado: ${current}`,
+                    desc: `El nodo ${current} tiene la menor distancia acumulada no visitada (d = ${dist[current]} km). Se marca como visitado.`,
+                    dist: { ...dist },
+                    prev: { ...prev },
+                    visited: new Set(visited),
+                    unvisited: new Set(unvisited),
+                    current: current,
+                    evaluatingEdge: null,
+                    optimalPath: []
+                });
+
+                if (current === targetNodeId) {
+                    break; // Reached target node!
+                }
+
+                // Examine neighbor edges
+                const neighborEdges = edges.filter(e => e.from === current || e.to === current);
+
+                neighborEdges.forEach(e => {
+                    const neighbor = (e.from === current) ? e.to : e.from;
+                    if (!visited.has(neighbor)) {
+                        const alt = dist[current] + e.weight;
+                        let updated = false;
+
+                        if (alt < dist[neighbor]) {
+                            dist[neighbor] = alt;
+                            prev[neighbor] = current;
+                            updated = true;
+                        }
+
+                        dijkstraSteps.push({
+                            title: `Evaluando Ruta hacia ${neighbor}`,
+                            desc: `Analizando arco (${current} → ${neighbor}) con distancia ${e.weight} km. Nueva distancia calculada: ${alt} km. ${updated ? `¡Ruta más corta encontrada! Se actualiza d[${neighbor}] = ${alt}.` : `Sin mejora (distancia actual ${dist[neighbor]} km es menor).`}`,
+                            dist: { ...dist },
+                            prev: { ...prev },
+                            visited: new Set(visited),
+                            unvisited: new Set(unvisited),
+                            current: current,
+                            evaluatingEdge: e,
+                            optimalPath: []
+                        });
+                    }
+                });
+            }
+
+            // Reconstruct optimal path
+            let path = [];
+            let curr = targetNodeId;
+            if (dist[targetNodeId] !== Infinity) {
+                while (curr !== null) {
+                    path.unshift(curr);
+                    curr = prev[curr];
+                }
+            }
+
+            // Final Step
+            dijkstraSteps.push({
+                title: `Ruta Óptima Calculada hacia ${targetNodeId}`,
+                desc: path.length > 0 
+                    ? `¡Algoritmo completado! La ruta óptima de entrega es [${path.join(" ➔ ")}] con una distancia total de ${dist[targetNodeId]} km.` 
+                    : `No existe ruta conectada entre ${startNodeId} y ${targetNodeId}.`,
+                dist: { ...dist },
+                prev: { ...prev },
+                visited: new Set(visited),
+                unvisited: new Set(unvisited),
+                current: null,
+                evaluatingEdge: null,
+                optimalPath: path
+            });
+        }
+
+        function resetDijkstraExecution() {
+            calculateDijkstraSteps();
+            currentStepIdx = 0;
+            renderCurrentStep();
+        }
+
+        function nextAlgorithmStep() {
+            if (currentStepIdx < dijkstraSteps.length - 1) {
+                currentStepIdx++;
+                renderCurrentStep();
+            }
+        }
+
+        function prevAlgorithmStep() {
+            if (currentStepIdx > 0) {
+                currentStepIdx--;
+                renderCurrentStep();
+            }
+        }
+
+        function runDijkstraInstantly() {
+            if (dijkstraSteps.length > 0) {
+                currentStepIdx = dijkstraSteps.length - 1;
+                renderCurrentStep();
+            }
+        }
+
+        function renderCurrentStep() {
+            if (dijkstraSteps.length === 0) return;
+            const step = dijkstraSteps[currentStepIdx];
+
+            // Update Header Explanation
+            document.getElementById("step-title").innerText = step.title;
+            document.getElementById("step-desc").innerText = step.desc;
+            document.getElementById("badge-step-counter").innerText = `Paso ${currentStepIdx} / ${dijkstraSteps.length - 1}`;
+
+            // Buttons state
+            document.getElementById("btn-prev-step").disabled = currentStepIdx === 0;
+
+            // Render Table
+            const tbody = document.getElementById("table-dijkstra-body");
+            tbody.innerHTML = "";
+
+            nodes.forEach(n => {
+                const tr = document.createElement("tr");
+                const dVal = step.dist[n.id] === Infinity ? "∞" : `${step.dist[n.id]} km`;
+                const pVal = step.prev[n.id] ? step.prev[n.id] : "-";
+                const isVisited = step.visited.has(n.id);
+                const isCurrent = step.current === n.id;
+                const isTarget = n.id === targetNodeId;
+
+                let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">Sin Visitar</span>`;
+                if (isCurrent) statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Evaluando</span>`;
+                else if (isVisited) statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Visitado</span>`;
+
+                tr.className = isCurrent ? "bg-amber-500/10" : "";
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-slate-200">${n.id} <span class="text-[10px] font-normal text-slate-400">(${n.label})</span></td>
+                    <td class="p-2 text-center font-bold ${step.dist[n.id] !== Infinity ? 'text-cyan-400' : 'text-slate-500'}">${dVal}</td>
+                    <td class="p-2 text-center font-bold text-slate-300">${pVal}</td>
+                    <td class="p-2 text-center">${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Render Priority Queue Chips
+            const queueContainer = document.getElementById("priority-queue-container");
+            queueContainer.innerHTML = "";
+
+            const sortedUnvisited = Array.from(step.unvisited).sort((a, b) => step.dist[a] - step.dist[b]);
+
+            sortedUnvisited.forEach(nodeId => {
+                const chip = document.createElement("div");
+                const distText = step.dist[nodeId] === Infinity ? "∞" : `${step.dist[nodeId]}km`;
+                chip.className = "px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-slate-300 flex items-center gap-1.5";
+                chip.innerHTML = `<span>${nodeId}</span> <span class="text-cyan-400 text-[10px] font-mono">(${distText})</span>`;
+                queueContainer.appendChild(chip);
+            });
+
+            // Render Summary Card Stats
+            const totalDist = step.dist[targetNodeId];
+            if (totalDist !== Infinity) {
+                document.getElementById("stat-total-distance").innerText = `${totalDist} km`;
+                const fuelEst = ((totalDist / 100) * 28 * 1.5).toFixed(2);
+                document.getElementById("stat-fuel-cost").innerText = `$${fuelEst} USD`;
+                const travelTimeEst = Math.round((totalDist / 50) * 60);
+                document.getElementById("stat-travel-time").innerText = `${travelTimeEst} min`;
+            } else {
+                document.getElementById("stat-total-distance").innerText = `Inalcanzable`;
+                document.getElementById("stat-fuel-cost").innerText = `$0 USD`;
+                document.getElementById("stat-travel-time").innerText = `0 min`;
+            }
+
+            // Draw Canvas Graph
+            drawGraph();
+            calculateImpactMetrics();
+        }
+
+        function drawGraph() {
+            if (!canvas || !ctx) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const step = dijkstraSteps[currentStepIdx] || { optimalPath: [], visited: new Set(), current: null, evaluatingEdge: null };
+
+            // Draw Edges
+            edges.forEach(e => {
+                const nodeA = nodes.find(n => n.id === e.from);
+                const nodeB = nodes.find(n => n.id === e.to);
+                if (!nodeA || !nodeB) return;
+
+                const isEvaluating = step.evaluatingEdge && 
+                    ((step.evaluatingEdge.from === e.from && step.evaluatingEdge.to === e.to) ||
+                     (step.evaluatingEdge.from === e.to && step.evaluatingEdge.to === e.from));
+
+                let isInOptimalPath = false;
+                if (step.optimalPath && step.optimalPath.length > 1) {
+                    for (let i = 0; i < step.optimalPath.length - 1; i++) {
+                        const p1 = step.optimalPath[i];
+                        const p2 = step.optimalPath[i+1];
+                        if ((p1 === e.from && p2 === e.to) || (p1 === e.to && p2 === e.from)) {
+                            isInOptimalPath = true;
+                            break;
+                        }
+                    }
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(nodeA.x, nodeA.y);
+                ctx.lineTo(nodeB.x, nodeB.y);
+
+                if (isInOptimalPath) {
+                    ctx.strokeStyle = "#06b6d4"; // Cyan Optimal
+                    ctx.lineWidth = 5;
+                } else if (isEvaluating) {
+                    ctx.strokeStyle = "#f59e0b"; // Amber evaluating
+                    ctx.lineWidth = 4;
+                } else {
+                    ctx.strokeStyle = "#334155"; // Default Slate
+                    ctx.lineWidth = 2;
+                }
+                ctx.stroke();
+
+                // Draw Edge Weight Label
+                const midX = (nodeA.x + nodeB.x) / 2;
+                const midY = (nodeA.y + nodeB.y) / 2;
+
+                ctx.fillStyle = "#0f172a";
+                ctx.beginPath();
+                ctx.arc(midX, midY, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = isInOptimalPath ? "#06b6d4" : "#475569";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = isInOptimalPath ? "#38bdf8" : "#94a3b8";
+                ctx.font = "bold 10px Inter";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(`${e.weight}km`, midX, midY);
+            });
+
+            // Draw Nodes
+            nodes.forEach(n => {
+                const isStart = n.id === startNodeId;
+                const isTarget = n.id === targetNodeId;
+                const isVisited = step.visited && step.visited.has(n.id);
+                const isCurrent = step.current === n.id;
+                const isInOptimalPath = step.optimalPath && step.optimalPath.includes(n.id);
+
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 22, 0, Math.PI * 2);
+
+                if (isStart) {
+                    ctx.fillStyle = "#2563eb"; // Blue Origen
+                } else if (isTarget) {
+                    ctx.fillStyle = "#059669"; // Green Destino
+                } else if (isCurrent) {
+                    ctx.fillStyle = "#d97706"; // Amber Current
+                } else if (isInOptimalPath) {
+                    ctx.fillStyle = "#0891b2"; // Cyan Optimal
+                } else if (isVisited) {
+                    ctx.fillStyle = "#15803d"; // Dark Green Visited
+                } else {
+                    ctx.fillStyle = "#1e293b"; // Default Slate
+                }
+                ctx.fill();
+
+                ctx.strokeStyle = (isStart || isTarget || isInOptimalPath) ? "#ffffff" : "#475569";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Node ID Label inside Circle
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 11px Inter";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(n.id, n.x, n.y);
+
+                // Node Subtitle Label below Circle
+                ctx.fillStyle = "#cbd5e1";
+                ctx.font = "10px Inter";
+                ctx.fillText(n.label, n.x, n.y + 34);
+            });
+        }
+
+        function initCanvasInteractions() {
+            canvas = document.getElementById("graphCanvas");
+            if (!canvas) return;
+            ctx = canvas.getContext("2d");
+
+            // Resize canvas to container
+            function resizeCanvas() {
+                const parent = canvas.parentElement;
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+                drawGraph();
+            }
+
+            window.addEventListener("resize", resizeCanvas);
+            resizeCanvas();
+
+            // Pointer events for dragging nodes
+            canvas.addEventListener("mousedown", e => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+
+                nodes.forEach(n => {
+                    const dist = Math.hypot(n.x - mx, n.y - my);
+                    if (dist <= 25) {
+                        draggedNode = n;
+                        dragOffsetX = mx - n.x;
+                        dragOffsetY = my - n.y;
+                    }
+                });
+            });
+
+            canvas.addEventListener("mousemove", e => {
+                if (draggedNode) {
+                    const rect = canvas.getBoundingClientRect();
+                    draggedNode.x = e.clientX - rect.left - dragOffsetX;
+                    draggedNode.y = e.clientY - rect.top - dragOffsetY;
+                    drawGraph();
+                }
+            });
+
+            window.addEventListener("mouseup", () => {
+                draggedNode = null;
+            });
+        }
+
+        function calculateImpactMetrics() {
+            const costPerKm = parseFloat(document.getElementById("input-cost-per-km").value) || 1.85;
+            const fuelRate = parseFloat(document.getElementById("input-fuel-rate").value) || 28;
+            const shipmentCount = parseInt(document.getElementById("input-shipment-count").value) || 450;
+            const consolidationFactor = parseInt(document.getElementById("input-consolidation").value) || 20;
+
+            document.getElementById("label-consolidation-val").innerText = `${consolidationFactor}% Consolidado`;
+
+            const step = dijkstraSteps[dijkstraSteps.length - 1] || { dist: {} };
+            const dijkstraDist = step.dist[targetNodeId] !== Infinity ? step.dist[targetNodeId] : 45;
+            const empiricalDist = Math.round(dijkstraDist * 1.38); // Empirical path is ~38% longer
+
+            const distSavingsPerTrip = empiricalDist - dijkstraDist;
+            const totalKmSavedMonthly = distSavingsPerTrip * shipmentCount * (1 + consolidationFactor / 100);
+
+            const financialSavingsMonthly = totalKmSavedMonthly * costPerKm;
+            const fuelSavedLiters = (totalKmSavedMonthly / 100) * fuelRate;
+            const co2SavedKg = fuelSavedLiters * 2.68; // 2.68 kg CO2 per liter diesel
+
+            // Render Output Cards
+            document.getElementById("calc-financial-savings").innerText = `$${Math.round(financialSavingsMonthly).toLocaleString()} USD`;
+            document.getElementById("calc-fuel-saved").innerText = `${Math.round(fuelSavedLiters).toLocaleString()} L`;
+            document.getElementById("calc-co2-saved").innerText = `${Math.round(co2SavedKg).toLocaleString()} kg`;
+
+            // Comparison Table
+            document.getElementById("comp-dist-trad").innerText = `${empiricalDist} km`;
+            document.getElementById("comp-dist-dijk").innerText = `${dijkstraDist} km`;
+            document.getElementById("comp-dist-pct").innerText = `-${Math.round((distSavingsPerTrip / empiricalDist) * 100)}%`;
+
+            const costTrad = (empiricalDist * costPerKm).toFixed(2);
+            const costDijk = (dijkstraDist * costPerKm).toFixed(2);
+            document.getElementById("comp-cost-trad").innerText = `$${costTrad} USD`;
+            document.getElementById("comp-cost-dijk").innerText = `$${costDijk} USD`;
+            document.getElementById("comp-cost-pct").innerText = `-${Math.round(((costTrad - costDijk) / costTrad) * 100)}%`;
+
+            const timeTrad = (empiricalDist / 40).toFixed(1);
+            const timeDijk = (dijkstraDist / 55).toFixed(1);
+            document.getElementById("comp-time-trad").innerText = `${timeTrad} hrs`;
+            document.getElementById("comp-time-dijk").innerText = `${timeDijk} hrs`;
+            document.getElementById("comp-time-pct").innerText = `-${Math.round(((timeTrad - timeDijk) / timeTrad) * 100)}%`;
+        }
+
+        const quizQuestions = [
+            {
+                id: 1,
+                question: "¿Cuál es la finalidad principal de aplicar el Algoritmo de Dijkstra en la gestión de transporte de salida?",
+                options: [
+                    { label: "Determinar el número máximo de camiones que caben en el almacén.", correct: false },
+                    { label: "Encontrar la ruta de costo o distancia mínima acumulada desde un centro de origen a los destinos.", correct: true },
+                    { label: "Calcular el arancel de aduana para exportación marítima.", correct: false },
+                    { label: "Eliminar el uso de conductores en la flota terrestre.", correct: false }
+                ],
+                explanation: "El algoritmo de Dijkstra resuelve el problema del camino más corto sobre un grafo ponderado, permitiendo optimizar distancia, costo o tiempo en transporte de salida."
+            },
+            {
+                id: 2,
+                question: "En una red logística modelada como grafo, ¿qué representan los Nodos y los Arcos (Edges)?",
+                options: [
+                    { label: "Nodos = Conductores; Arcos = Impuestos de tránsito.", correct: false },
+                    { label: "Nodos = Facturas de envío; Arcos = Peajes de autopista.", correct: false },
+                    { label: "Nodos = Centros de Distribución / Clientes; Arcos = Rutas o tramos de transporte con sus costos.", correct: true },
+                    { label: "Nodos = Contenedores; Arcos = Paletas de madera.", correct: false }
+                ],
+                explanation: "Los nodos son las ubicaciones físicas (almacenes, hubs, clientes) y los arcos representan las carreteras o conexiones con sus pesos (km, costo, tiempo)."
+            },
+            {
+                id: 3,
+                question: "¿Cómo contribuye la consolidación de pedidos a la fluidez y economía de la cadena de suministro?",
+                options: [
+                    { label: "Agrupa múltiples envíos pequeños en una misma ruta optimizada, incrementando la ocupación vehicular y reduciendo el costo unitario.", correct: true },
+                    { label: "Obliga a enviar cada paquete en un vehículo individual sin importar su tamaño.", correct: false },
+                    { label: "Aumenta los tiempos de espera indefinidamente sin generar ahorros monetarios.", correct: false },
+                    { label: "Incrementa el consumo de combustible de forma lineal.", correct: false }
+                ],
+                explanation: "La consolidación aprovecha la capacidad cúbica de los vehículos en rutas optimizadas por Dijkstra, reduciendo los kilómetros recorridos por tonelada transportada."
+            }
+        ];
+
+        let quizIndex = 0;
+        let quizScore = 0;
+        let quizAnswers = {};
+
+        function renderQuiz() {
+            const container = document.getElementById("quiz-container");
+            const q = quizQuestions[quizIndex];
+            const isAnswered = quizAnswers[q.id] !== undefined;
+
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>Pregunta ${quizIndex + 1} de ${quizQuestions.length}</span>
+                        <span>Unidad: Optimización de Rutas</span>
+                    </div>
+
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 text-white font-medium text-sm leading-relaxed">
+                        ${q.question}
+                    </div>
+
+                    <div class="space-y-2 pt-2">
+                        ${q.options.map((opt, idx) => {
+                            let btnStyle = "bg-slate-900 border-slate-700 hover:border-cyan-500 text-slate-200";
+                            if (isAnswered) {
+                                if (opt.correct) btnStyle = "bg-emerald-900/60 border-emerald-500 text-emerald-200 font-bold";
+                                else if (quizAnswers[q.id] === idx) btnStyle = "bg-rose-900/60 border-rose-500 text-rose-200";
+                                else btnStyle = "bg-slate-900/40 border-slate-800 text-slate-500 opacity-50";
+                            }
+
+                            return `
+                                <button onclick="answerQuiz(${idx})" ${isAnswered ? 'disabled' : ''} 
+                                    class="w-full p-3.5 rounded-xl border text-left text-xs font-medium transition flex items-center justify-between ${btnStyle}">
+                                    <span>${opt.label}</span>
+                                    ${isAnswered && opt.correct ? '<i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>' : ''}
+                                </button>
+                            `;
+                        }).join("")}
+                    </div>
+
+                    ${isAnswered ? `
+                        <div class="mt-4 p-4 rounded-xl bg-slate-900 border border-cyan-500/30 text-xs text-slate-300">
+                            <strong class="font-bold text-cyan-400 block mb-1">Explicación Logística:</strong>
+                            ${q.explanation}
+                        </div>
+
+                        <div class="flex justify-end mt-4">
+                            <button onclick="nextQuiz()" class="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-extrabold transition">
+                                ${quizIndex < quizQuestions.length - 1 ? 'Siguiente Pregunta ➔' : 'Ver Resultado Final'}
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function answerQuiz(optionIdx) {
+            const q = quizQuestions[quizIndex];
+            quizAnswers[q.id] = optionIdx;
+            if (q.options[optionIdx].correct) {
+                quizScore += 33.3;
+                document.getElementById("quiz-score-display").innerText = Math.round(quizScore);
+            }
+            renderQuiz();
+        }
+
+        function nextQuiz() {
+            if (quizIndex < quizQuestions.length - 1) {
+                quizIndex++;
+                renderQuiz();
+            } else {
+                document.getElementById("quiz-container").innerHTML = `
+                    <div class="text-center py-8 space-y-4">
+                        <div class="w-16 h-16 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+                            <i class="fa-solid fa-trophy"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-white">Evaluación Completada</h3>
+                        <p class="text-xs text-slate-400">Puntuación Final: <span class="text-cyan-400 font-bold text-base">${Math.round(quizScore)} / 100 pts</span></p>
+                    </div>
+                `;
+            }
+        }
+
+        function switchTab(tabId) {
+            ['simulator', 'impact', 'scenarios', 'quiz', 'theory'].forEach(id => {
+                document.getElementById(`sec-${id}`).classList.add('hidden');
+                document.getElementById(`tab-${id}`).classList.remove('tab-active');
+                document.getElementById(`tab-${id}`).classList.add('text-slate-400');
+            });
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.add('tab-active');
+            activeTab.classList.remove('text-slate-400');
+
+            if (tabId === 'simulator') {
+                setTimeout(() => {
+                    initCanvasInteractions();
+                    drawGraph();
+                }, 100);
+            }
+            if (tabId === 'impact') calculateImpactMetrics();
+            if (tabId === 'quiz') renderQuiz();
+        }
+
+        window.onload = function() {
+            loadScenario('urban');
+            initCanvasInteractions();
+        };
+    </script>
+</body>
+</html>
